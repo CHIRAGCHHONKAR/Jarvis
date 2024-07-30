@@ -164,7 +164,7 @@ def virtual_assistant():
                 webbrowser.open("https://github.com/CHIRAGCHHONKAR")
             elif "open claude ai" in command.lower():
                 speak("Opening Claude AI")
-                webbrowser.open("https://www.instagram.com")    
+                webbrowser.open("https://claude.ai")    
             elif "open chat gpt" in command.lower():
                 speak("Opening Chat GPT")
                 webbrowser.open("https://chat.openai.com/")
