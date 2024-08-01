@@ -1,2 +1,2 @@
 @echo off
-pythonw "d:\github project\Jarvis\jarvis.py"
+start "" pythonw "d:\github project\JarvisVirtualAssistance\jarvis.py"
