@@ -9,6 +9,7 @@ from googlesearch import search
 from bs4 import BeautifulSoup
 import pythoncom
 import sys
+import re
 
 def get_d_drive_directories():
     d_drive_dirs = []
@@ -40,16 +41,16 @@ def speak(text):
     engine.say(text)
     engine.runAndWait()
 
-def listen(energy_threshold=600, phrase_time_limit=20):
+def listen(energy_threshold=600, pause_threshold=0.8, phrase_time_limit=20):
     recognizer = sr.Recognizer()
+    recognizer.energy_threshold = energy_threshold
+    recognizer.pause_threshold = pause_threshold
 
     with sr.Microphone() as source:
         print("Listening...")
         recognizer.adjust_for_ambient_noise(source, duration=1)
-        recognizer.dynamic_energy_threshold = True
-        recognizer.energy_threshold = energy_threshold
         try:
-            audio_data = recognizer.listen(source, timeout=10, phrase_time_limit=phrase_time_limit)
+            audio_data = recognizer.listen(source, timeout=5, phrase_time_limit=phrase_time_limit)
         except sr.WaitTimeoutError:
             print("No speech detected")
             return ""
@@ -98,11 +99,30 @@ def open_drive(drive_letter):
     else:
         speak(f"Sorry, {drive_letter} drive is not accessible")    
 
+
+def clean_filename(filename):
+    # Replace common speech-to-text artifacts
+    filename = filename.lower()
+    filename = filename.replace(" dot ", ".")
+    filename = filename.replace("dot ", ".")
+    filename = filename.replace(" period ", ".")
+    filename = filename.replace("period ", ".")
+    
+    # Remove any spaces before file extensions
+    filename = re.sub(r'\s+([.]\w+)$', r'\1', filename)
+    
+    # Remove any non-filename characters
+    filename = re.sub(r'[^\w.-]', '', filename)
+    
+    return filename
+
 def find_file(filename):
+    cleaned_filename = clean_filename(filename)
     for drive in ['C:', 'D:']:  # Add more drives if needed
         for root, dirs, files in os.walk(drive + '\\'):
-            if filename.lower() in (file.lower() for file in files):
-                return os.path.join(root, filename)
+            for file in files:
+                if cleaned_filename.lower() in file.lower():
+                    return os.path.join(root, file)
     return None
 
 def find_folder(foldername):
@@ -136,6 +156,28 @@ def get_relevant_info(text):
         return sentences[0]
     return "Sorry, I couldn't find specific information."
 
+def open_url(url, site_name):
+    print(f"Attempting to open {site_name}...")
+    speak(f"Opening {site_name}")
+    
+    try:
+        webbrowser.open(url, new=2)
+        print(f"Opened {site_name} using webbrowser")
+    except Exception as e:
+        print(f"Error with webbrowser: {e}")
+        try:
+            os.system(f"start {url}")
+            print(f"Opened {site_name} using os.system")
+        except Exception as e:
+            print(f"Error with os.system: {e}")
+            try:
+                subprocess.Popen(['start', url], shell=True)
+                print(f"Opened {site_name} using subprocess")
+            except Exception as e:
+                print(f"Error with subprocess: {e}")
+                speak(f"I'm having trouble opening {site_name}. Please try manually.")
+                return False
+    return True
 
 def virtual_assistant():
     wish()
@@ -148,32 +190,23 @@ def virtual_assistant():
             elif "open d drive" in command:
                 open_drive("D")
             elif "open google" in command:
-                speak("Opening Google")
-                webbrowser.open("https://www.google.com")
+                open_url("https://www.google.com", "Google")
             elif "open youtube" in command:
-                speak("Opening YouTube")
-                webbrowser.open("https://www.youtube.com")
+                open_url("https://www.youtube.com", "YouTube")
             elif "open whatsapp" in command:
-                speak("Opening WhatsApp")
-                webbrowser.open("https://web.whatsapp.com")
+                open_url("https://web.whatsapp.com", "WhatsApp")
             elif "open instagram" in command:
-                speak("Opening Instagram")
-                webbrowser.open("https://www.instagram.com")
+                open_url("https://www.instagram.com", "Instagram")
             elif "open github" in command:
-                speak("Opening GitHub")
-                webbrowser.open("https://github.com/CHIRAGCHHONKAR")
-            elif "open claude ai" in command.lower():
-                speak("Opening Claude AI")
-                webbrowser.open("https://claude.ai")    
-            elif "open chat gpt" in command.lower():
-                speak("Opening Chat GPT")
-                webbrowser.open("https://chat.openai.com/")
+                open_url("https://github.com/CHIRAGCHHONKAR", "GitHub")
+            elif "open claude" in command or "open cloud ai" in command or "claude ai" in command:
+                open_url("https://claude.ai", "Claude AI")
+            elif "open chat gpt" in command:
+                open_url("https://chat.openai.com/", "ChatGPT")
             elif "open freepik" in command:
-                speak("Opening freepik")
-                webbrowser.open("https://www.freepik.com/")    
+                open_url("https://www.freepik.com/", "Freepik")
             elif "open supabase" in command:
-                speak("Opening supabase")
-                webbrowser.open("https://supabase.com/dashboard/projects")     
+                open_url("https://supabase.com/dashboard/projects", "Supabase")
             elif "open vs code" in command:
                 speak("Opening VS Code")
                 os.system("code")  
@@ -207,15 +240,19 @@ def virtual_assistant():
                 speak("What's the name of the file you'd like to open?")
                 filename = listen()
                 if filename:
-                    file_path = find_file(filename)
+                    cleaned_filename = clean_filename(filename)
+                    speak(f"Searching for file: {cleaned_filename}")
+                    file_path = find_file(cleaned_filename)
                     if file_path:
                         try:
                             os.startfile(file_path)
-                            speak(f"Opening {filename}")
-                        except:
-                            speak(f"Sorry, I couldn't open {filename}")
+                            speak(f"Opening {(filename)}")
+                        except Exception as e:
+                            speak(f"Sorry, I couldn't open {cleaned_filename}. Error: {str(e)}")
                     else:
-                        speak(f"Sorry, I couldn't find {filename}")
+                        speak(f"Sorry, I couldn't find {cleaned_filename}")
+                else:
+                    speak("I'm sorry, I didn't catch the filename. Please try again.")
             elif "open folder" in command:
                 folder_name = get_folder_name()
                 if folder_name:
@@ -253,11 +290,15 @@ def create_startup_batch():
     batch_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_jarvis.bat")
     with open(batch_path, "w") as batch_file:
         batch_file.write(f'@echo off\n')
-        batch_file.write(f'pythonw "{os.path.abspath(__file__)}"\n')
+        batch_file.write(f'start "" pythonw "{os.path.abspath(__file__)}"\n')
     print(f"Batch file created at: {batch_path}")
     return batch_path
 
 if __name__ == "__main__":
     create_startup_batch()  # This will create/update the batch file every time
     pythoncom.CoInitialize()
+    engine = pyttsx3.init()
+    voices = engine.getProperty('voices')
+    engine.setProperty('voice', voices[1].id)
+    engine.setProperty('rate', 150)
     virtual_assistant()  
