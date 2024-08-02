@@ -50,7 +50,7 @@ def listen(energy_threshold=600, pause_threshold=0.8, phrase_time_limit=20):
         print("Listening...")
         recognizer.adjust_for_ambient_noise(source, duration=1)
         try:
-            audio_data = recognizer.listen(source, timeout=5, phrase_time_limit=phrase_time_limit)
+            audio_data = recognizer.listen(source, timeout=3, phrase_time_limit=phrase_time_limit)
         except sr.WaitTimeoutError:
             print("No speech detected")
             return ""
