@@ -41,7 +41,7 @@ def speak(text):
     engine.say(text)
     engine.runAndWait()
 
-def listen(energy_threshold=600, pause_threshold=0.8, phrase_time_limit=20):
+def listen(energy_threshold=700, pause_threshold=0.8, phrase_time_limit=20):
     recognizer = sr.Recognizer()
     recognizer.energy_threshold = energy_threshold
     recognizer.pause_threshold = pause_threshold
@@ -70,7 +70,7 @@ def listen(energy_threshold=600, pause_threshold=0.8, phrase_time_limit=20):
 def get_folder_name():
     for _ in range(3):
         speak("Please say the name of the folder you'd like to open.")
-        folder_name = listen(energy_threshold=600, phrase_time_limit=15)
+        folder_name = listen(energy_threshold=700, phrase_time_limit=15)
         if folder_name:
             return folder_name
         else:
